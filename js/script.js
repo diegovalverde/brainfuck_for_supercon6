@@ -177,3 +177,12 @@ class SuperCon6BrainFuckCompiler
     return asm_txt;
   }
 };
+
+
+function compileIt(){
+  var parser = new SuperCon6BrainFuckCompiler();
+  let text = document.getElementById('brian_fuck_input').value
+  let asm_txt = parser.compile(text);
+
+  document.getElementById('asm_output').value = asm_txt;
+}

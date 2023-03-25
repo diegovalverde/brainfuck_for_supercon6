@@ -2,14 +2,16 @@
   <script src="js/script.js"></script>
 </head>
 <body>
+
+  <div>
+  <input type="text" id="brian_fuck_input" value="[->+<]">  </input>
+  <button onclick="compileIt();">generate</button>
+</div>
+<div>
   <textarea id="asm_output" rows="40" cols="100"></textarea>
 
-  <script>
-    var parser = new SuperCon6BrainFuckCompiler();
-    let asm_txt = parser.compile("[->+<]");
+</div>
 
-    document.getElementById('asm_output').value = asm_txt;
-  </script>
 
 
 
