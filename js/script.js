@@ -12,6 +12,17 @@ class SuperConnBrainFuckCompiler
       'insn_ptr_low': 'r4',
       'insn_ptr_high': 'r5'
     };
+
+    this.isns = {
+      '+': '1',
+      '-': '2',
+      '>': '3',
+      '<': '4',
+      '.': '5',
+      '[': '6',
+      ']': '7'
+    };
+
     let data_ptr = function (){
       return '[' + this.rmap['data_ptr_high'] + ":" + this.rmap['data_ptr_low'] + ']'
     };
@@ -124,6 +135,17 @@ class SuperConnBrainFuckCompiler
           'skip nc, 1',
           'gosub find_matching_open_square'
         ],
+
+      'find_matching_open_square': [
+            'mov r0, ' + insn_ptr(),
+            'cp r0, ' + this.insn['['],
+            'skip c, 1',
+            'ret'
+            'mov r0, ' + insn_ptr(),
+            'inc r0',
+            'mov ' + insn_ptr() + ', r0',
+            'jr find_matching_open_square'
+          ],
 
     };
   }
