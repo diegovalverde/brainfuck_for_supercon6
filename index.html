@@ -1,0 +1,16 @@
+<head>
+  <script src="js/script.js"></script>
+</head>
+<body>
+  <textarea id="asm_output" rows="40" cols="100"></textarea>
+
+  <script>
+    var parser = new SuperCon6BrainFuckCompiler();
+    let asm_txt = parser.compile("[->+<]");
+
+    document.getElementById('asm_output').value = asm_txt;
+  </script>
+
+
+
+</body>
