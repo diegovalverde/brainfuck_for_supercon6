@@ -7,26 +7,16 @@ class SuperCon6BrainFuckCompiler
     return '[' + this.rmap['data_ptr_high'] + ":" + this.rmap['data_ptr_low'] + ']';
   };
 
-  chg_data_ptr(op){
-    return ["mov r0," + this.rmap['data_ptr_low'],
+  chg_ptr(ptr,op){
+    return ["mov r0," + this.rmap[ptr+'_ptr_low'],
     op + " r0",
-    "mov "+this.rmap['data_ptr_low']+", r0",
+    "mov "+this.rmap[ptr+'_ptr_low']+", r0",
     "skip c, 3", //skip if carry is zero
-    "mov r0," + this.rmap['data_ptr_high'],
+    "mov r0," + this.rmap[ptr+'_ptr_high'],
     op + " r0",
-    "mov "+this.rmap['data_ptr_high']+", r0",]
+    "mov "+this.rmap[ptr+'_ptr_high']+", r0",]
   };
-
-  inc_insn(){
-    return ["mov r0," + this.rmap['insn_ptr_low'],
-    "inc r0",
-    "mov "+this.rmap['insn_ptr_low']+", r0",
-    "skip c, 3", //skip if carry is zero
-    "mov r0," + this.rmap['insn_ptr_high'],
-    "inc r0",
-    "mov "+this.rmap['insn_ptr_high']+", r0"]
-  }
-
+  
   insn_ptr(){
     return '[' + this.rmap['insn_ptr_high'] + ":" + this.rmap['insn_ptr_low'] + ']';
   };
@@ -42,6 +32,7 @@ class SuperCon6BrainFuckCompiler
     };
 
     this.insn = {
+      'eop': '0',
       '+': '1',
       '-': '2',
       '>': '3',
@@ -81,8 +72,12 @@ class SuperCon6BrainFuckCompiler
         'cp r0, '+ this.insn['.'],
         'skip nz, 1',
         'jr  label_print',
+        'label_eop:',
+        'cp r0, '+ this.insn['eop'],
+        'skip nz, 1',
+        'jr label_eop',
         'label_next_insn:']
-        .concat(this.inc_insn())
+        .concat(this.chg_ptr('insn','inc'))
         .concat('jr main_execution_loop'),
 
 
@@ -97,7 +92,7 @@ class SuperCon6BrainFuckCompiler
           'mov ' + this.data_ptr() + ', r0',
           'skip nc, 1',
           'jr label_plus_exit'].concat(
-          this.chg_data_ptr('inc')).concat(
+          this.chg_ptr('data','inc')).concat(
           ['label_plus_exit:', 'jr label_next_insn']),
 
       // - Decrement (decrease by one) the byte at the data pointer.
@@ -108,19 +103,19 @@ class SuperCon6BrainFuckCompiler
         'mov ' + this.data_ptr() + ', r0',
         'skip nc, 1',
         'jr label_minus_exit'].concat(
-        this.chg_data_ptr('inc')).concat(
+        this.chg_ptr('data','inc')).concat(
         ['label_minus_exit:', 'jr label_next_insn']),
       // > Increment the data pointer (to point to the next cell to the right).
       'label_right':
-        this.chg_data_ptr('inc')
-          .concat(this.chg_data_ptr('inc'))
+        this.chg_ptr('data','inc')
+          .concat(this.chg_ptr('data','inc'))
           .concat("mov r7, 4",'jr label_next_insn'),
 
 
       // < Decrement the data pointer (to point to the next cell to the right).
       'label_left':
-        this.chg_data_ptr('dec')
-        .concat(this.chg_data_ptr('dec'))
+        this.chg_ptr('data','dec')
+        .concat(this.chg_ptr('data','dec'))
         .concat("mov r7, 5",'jr label_next_insn'),
 
       // . Output the byte at the data pointer.
@@ -135,8 +130,8 @@ class SuperCon6BrainFuckCompiler
         "mov r7, 7",
           'mov r0, ' + this.data_ptr(),
           'cp r0, 0',
-          'skip nc, 1',
-          'gosub find_matching_close_square',
+          'skip nz, 1',
+          'jr find_matching_close_square',
           'jr label_next_insn'
         ],
 
@@ -144,13 +139,12 @@ class SuperCon6BrainFuckCompiler
         "mov r7, 8",
           'mov r0, ' + this.insn_ptr(),
           'cp r0, ' + this.insn[']'],
-          'skip c, 1',
-          'jr label_next_insn',
-          'mov r0, ' + this.insn_ptr(),
-          'inc r0',
-          'mov ' + this.insn_ptr() + ', r0',
-          'jr label_next_insn'
-        ],
+          'skip nz, 1',
+          'jr label_next_insn'].concat(
+            this.chg_ptr('insn','inc')
+          )
+          .concat([
+          'jr find_matching_close_square']),
 
       //If the byte at the data pointer is nonzero,
       // then instead of moving the instruction pointer forward
@@ -159,21 +153,21 @@ class SuperCon6BrainFuckCompiler
         "mov r7, 9",
           'mov r0, ' + this.data_ptr(),
           'cp r0, 0',
-          'skip nc, 1',
+          'skip z, 1',
+          'jr find_matching_open_square',
           'jr label_next_insn'
         ],
 
       'find_matching_open_square': [
-        "mov r7, 10",
-            'mov r0, ' + this.insn_ptr(),
-            'cp r0, ' + this.insn['['],
-            'skip c, 1',
-            'jr label_next_insn',
-            'mov r0, ' + this.insn_ptr(),
-            'inc r0' ,
-            'mov ' + this.insn_ptr() + ', r0',
-            'jr label_next_insn'
-          ],
+        "mov r7, 8",
+          'mov r0, ' + this.insn_ptr(),
+          'cp r0, ' + this.insn[']'],
+          'skip nz, 1',
+          'jr label_next_insn'].concat(
+            this.chg_ptr('insn','dec')
+          )
+          .concat([
+          'jr find_matching_open_square']),
 
     };
   }
