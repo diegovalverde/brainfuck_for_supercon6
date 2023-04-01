@@ -1,34 +1,38 @@
 
 
-
 class SuperCon6BrainFuckCompiler
 {
-  data_ptr(){
-    return '[' + this.rmap['data_ptr_high'] + ":" + this.rmap['data_ptr_low'] + ']';
-  };
+
 
   chg_ptr(ptr,op){
-    return ["mov r0," + this.rmap[ptr+'_ptr_low'],
-    op + " r0",
-    "mov "+this.rmap[ptr+'_ptr_low']+", r0",
-    "skip c, 3", //skip if carry is zero
-    "mov r0," + this.rmap[ptr+'_ptr_high'],
-    op + " r0",
-    "mov "+this.rmap[ptr+'_ptr_high']+", r0",]
-  };
-  
-  insn_ptr(){
-    return '[' + this.rmap['insn_ptr_high'] + ":" + this.rmap['insn_ptr_low'] + ']';
+    let cond = 'nz';
+    let operation = "inc r0";
+    if (op === 'dec'){
+      operation = 'sub r0, r1'; // dec does not work on simulator...
+            //for dec, if result=1111 after operation, reset flag C
+      cond = 'nc';
+    }
+
+    return [
+    "mov r1, 1",
+    "mov r0,[" + this.mmap[ptr+'_ptr']+']',
+    operation,
+    "mov ["+this.mmap[ptr+'_ptr']+"], r0",
+    "skip " + cond + ", 4", //skip if carry is zero
+    "mov r0,[" + this.mmap[ptr+'_ptr']+'+1]',
+    "mov r7, 11",
+    operation,
+    'mov ['+this.mmap[ptr+'_ptr']+'+1] , r0'];
+
   };
 
 
   constructor(){
 
-    this.rmap = {
-      'data_ptr_low': 'r2',
-      'data_ptr_high': 'r3',
-      'insn_ptr_low': 'r4',
-      'insn_ptr_high': 'r5'
+    this.mmap = {
+      // data ptr at 0x20 - 0x21
+      'insn_ptr': '0x22',
+      'data_ptr': '0x20',
     };
 
     this.insn = {
@@ -49,7 +53,17 @@ class SuperCon6BrainFuckCompiler
       'main_execution_loop': [
         'mov r7, 1',
         '; load current instruction',
-        'mov r0, '+ this.insn_ptr(),
+        'mov r0, ['+ this.mmap['data_ptr']+']',
+        'mov r9, r0',
+        'mov r0, ['+ this.mmap['data_ptr']+'+1]',
+        'mov r9, r0',
+        'mov r0, ['+ this.mmap['insn_ptr']+']',
+        'mov r8, r0',
+        'mov r1, r0',
+        'mov r0, ['+ this.mmap['insn_ptr']+'+1]',
+        'mov r8, r0',
+        'mov r2, r0',
+        'mov r0, [r2:r1]',
         '; decode the instruction',
         'cp r0, '+ this.insn['+'],
         'skip nz, 1',
@@ -80,42 +94,46 @@ class SuperCon6BrainFuckCompiler
         .concat(this.chg_ptr('insn','inc'))
         .concat('jr main_execution_loop'),
 
+      'inc_data': [
+        "mov r0,[" + this.mmap['data_ptr']+']',
+        "mov r1, r0",
+        "mov r0,[" + this.mmap['data_ptr']+'+ 1]',
+        "mov r2, r0",
+        "mov r0, [r2:r1]",
+        "inc r0",
+        "mov [r2:r1], r0",
+        "jr label_next_insn "],
 
-
-
+        'dec_data': [
+          "mov r0,[" + this.mmap['data_ptr']+']',
+          "mov r1, r0",
+          "mov r0,[" + this.mmap['data_ptr']+'+ 1]',
+          "mov r2, r0",
+          "mov r0, [r2:r1]",
+          "dec r0",
+          "mov [r2:r1], r0",
+          "jr label_next_insn "],
 
       // + Increment (increase by one) the byte at the data pointer.
       'label_plus': [
           "mov r7, 2",
-          'mov r0, ' + this.data_ptr(),
-          'inc r0', // inc 4 bits
-          'mov ' + this.data_ptr() + ', r0',
-          'skip nc, 1',
-          'jr label_plus_exit'].concat(
-          this.chg_ptr('data','inc')).concat(
-          ['label_plus_exit:', 'jr label_next_insn']),
+          "jr inc_data",
+          "jr label_next_insn"],
 
       // - Decrement (decrease by one) the byte at the data pointer.
       'label_minus': [
         "mov r7, 3",
-        'mov r0, ' + this.data_ptr(),
-        'dec r0', // inc 4 bits
-        'mov ' + this.data_ptr() + ', r0',
-        'skip nc, 1',
-        'jr label_minus_exit'].concat(
-        this.chg_ptr('data','inc')).concat(
-        ['label_minus_exit:', 'jr label_next_insn']),
+        "jr dec_data",
+        "jr label_next_insn"],
       // > Increment the data pointer (to point to the next cell to the right).
       'label_right':
         this.chg_ptr('data','inc')
-          .concat(this.chg_ptr('data','inc'))
           .concat("mov r7, 4",'jr label_next_insn'),
 
 
       // < Decrement the data pointer (to point to the next cell to the right).
       'label_left':
         this.chg_ptr('data','dec')
-        .concat(this.chg_ptr('data','dec'))
         .concat("mov r7, 5",'jr label_next_insn'),
 
       // . Output the byte at the data pointer.
@@ -128,7 +146,11 @@ class SuperCon6BrainFuckCompiler
       // forward to the next command, jump it forward to the command after the matching ] command.
       'label_open': [
         "mov r7, 7",
-          'mov r0, ' + this.data_ptr(),
+          'mov r0, [' + this.mmap['data_ptr']+']',
+          'mov r1, r0',
+          'mov r0, [' + this.mmap['data_ptr']+' + 1]',
+          'mov r2, r0',
+          'mov r0, [r2:r1]',
           'cp r0, 0',
           'skip nz, 1',
           'jr find_matching_close_square',
@@ -136,8 +158,11 @@ class SuperCon6BrainFuckCompiler
         ],
 
       'find_matching_close_square': [
-        "mov r7, 8",
-          'mov r0, ' + this.insn_ptr(),
+          'mov r0, [' + this.mmap['insn_ptr']+']',
+          'mov r1, r0',
+          'mov r0, [' + this.mmap['insn_ptr']+'+1]',
+          'mov r2, r0',
+          'mov r0, [r2:r1]',
           'cp r0, ' + this.insn[']'],
           'skip nz, 1',
           'jr label_next_insn'].concat(
@@ -150,24 +175,30 @@ class SuperCon6BrainFuckCompiler
       // then instead of moving the instruction pointer forward
       // to the next command, jump it back to the command after the matching [ command.
       'label_close': [
-        "mov r7, 9",
-          'mov r0, ' + this.data_ptr(),
-          'cp r0, 0',
-          'skip z, 1',
-          'jr find_matching_open_square',
-          'jr label_next_insn'
-        ],
+        'mov r0, [' + this.mmap['data_ptr']+']',
+        'mov r1, r0',
+        'mov r0, [' + this.mmap['data_ptr']+' + 1]',
+        'mov r2, r0',
+        'mov r0, [r2:r1]',
+        'cp r0, 0',
+        'skip z, 1',
+        'jr find_matching_open_square',
+        'jr label_next_insn'],
 
       'find_matching_open_square': [
-        "mov r7, 8",
-          'mov r0, ' + this.insn_ptr(),
-          'cp r0, ' + this.insn[']'],
-          'skip nz, 1',
-          'jr label_next_insn'].concat(
-            this.chg_ptr('insn','dec')
-          )
-          .concat([
-          'jr find_matching_open_square']),
+        'mov r7, 15',
+        'mov r0, [' + this.mmap['insn_ptr']+']',
+        'mov r1, r0',
+        'mov r0, [' + this.mmap['insn_ptr']+'+1]',
+        'mov r2, r0',
+        'mov r0, [r2:r1]',
+        'cp r0, ' + this.insn['['],
+        'skip nz, 1',
+        'jr label_next_insn'].concat(
+          this.chg_ptr('insn','dec')
+        )
+        .concat([
+        'jr find_matching_open_square']),
 
     };
   }
@@ -177,7 +208,20 @@ class SuperCon6BrainFuckCompiler
     // Address from 0 to F in page0 are regs
     // stack starts in addr 0xA in page0
 
-    let general_purpose_ram_page0 = 0x10
+    // locate data at beginning of page 1
+    let bf_data_address = 0x60;
+    let dp_low = bf_data_address & 0xF;
+    let dp_high = (bf_data_address & 0xF0) >> 4;
+    asm_txt += "; locate Brain Fuck Data memory right after the last instruction\n"
+    asm_txt += "mov r0, " + dp_low.toString() + "\n";
+    asm_txt += "mov [" + this.mmap['data_ptr'] + "], r0\n" ;
+    asm_txt += "mov r0, " + + dp_high.toString() + "\n";
+    asm_txt += "mov [" + this.mmap['data_ptr'] + "+1], r0\n";
+    asm_txt += "mov r0, " + dp_high.toString() + "\n";//3\n";
+    asm_txt += "mov [0xf0], r0 ; write to SFR\n";
+
+
+    let general_purpose_ram_page0 = 0xC0; //0x24
     // now copy instructions into insn memory
     asm_txt += ";Locate instruction memory area starting at address " +general_purpose_ram_page0.toString() +" \n"
     let insn_ptr = general_purpose_ram_page0;
@@ -193,19 +237,13 @@ class SuperCon6BrainFuckCompiler
       asm_txt += "mov [" + ip_high.toString() +  ":" + ip_low.toString() + "] , r0\n";
       insn_ptr++;
     }
-    // locate data at beginning of page 1
-    let bf_data_address = 48;
-    let dp_low = bf_data_address & 0xF;
-    let dp_high = (bf_data_address & 0xF0) >> 4;
-    asm_txt += "; locate Brain Fuck Data memory right after the last instruction\n"
-    asm_txt += "mov " + this.rmap['data_ptr_low'] + ", " + dp_low.toString() + "\n";
-    asm_txt += "mov " + this.rmap['data_ptr_high'] + ", " + dp_high.toString() + "\n";
-    asm_txt += "mov r0, 3\n";
-    asm_txt += "mov [0xf0], r0 ; write to SFR\n";
 
     asm_txt += "; load initial program pointer\n"; insn_ptr++;
-    asm_txt += "mov " + this.rmap['insn_ptr_low'] + ", " + (general_purpose_ram_page0 & 0xF).toString() + "\n";insn_ptr++;
-    asm_txt += "mov " + this.rmap['insn_ptr_high']+ ", " +((general_purpose_ram_page0 & 0XF0)>>4).toString() +"\n";insn_ptr++;
+
+    asm_txt += "mov r0," + (general_purpose_ram_page0 & 0xF).toString() + "\n";insn_ptr++;
+    asm_txt += "mov [" + this.mmap['insn_ptr'] + "], r0\n"
+    asm_txt += "mov r0," +((general_purpose_ram_page0 & 0XF0)>>4).toString() +"\n";insn_ptr++;
+    asm_txt += "mov [" + this.mmap['insn_ptr'] + " + 1], r0\n"
     asm_txt += "jr main_execution_loop\n\n\n";insn_ptr++;
 
 
