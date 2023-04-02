@@ -1,11 +1,20 @@
 <head>
-  <script src="js/script.js"></script>
+
   <script src="js/lib/pyodide/pyodide.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.5/ace.js" type="text/jscript" charset="utf-8"></script>
-</head>
-<body>
 
-  <div>
+</head>
+<body style="background-color:#d8d8df;">
+
+  <style>
+      body {
+          font-family: Arial, sans-serif;
+          margin: 0;
+          padding: 0;
+      }
+  </style>
+
+  <div >
     <!-- working -->
     <!-- +>++>++++----<--<- -->
     <!-- +>++>++++>++++++++--------<----<--<-. -->
@@ -13,13 +22,65 @@
     <!-- not working -->
     <!-- ++>+<[->+<]. -->
 
-  <input type="text" id="brian_fuck_input" value="+++>+<[->+<].">  </input>
-  <button onclick="compileIt();">generate</button>
-</div>
-<div>
-  <textarea id="asm_output" rows="40" cols="100"></textarea>
+    <table style="text-align: center; background-color:#ffffff;">
+      <tr>
+        <td>__________________________________________________________________</td>
+      </tr>
+      <tr>
+        <td >
+          <p style="font-size: 120px; text-align: center;">
+          [<img src="img/brain.png" height="60"/>+<img src="img/zukini.png" height="60"/>]><img src="img/badge.png" height="130" style="vertical-align: middle;"/>
+          </p>
+        </td>
+      </tr>
+
+      <tr>
+        <td>___________________________________________________________________</td>
+      </tr>
+
+      <tr>
+        <td>
+          <br>
+          This is a simple <a href="https://en.wikipedia.org/wiki/Brainfuck"> Brainfuck </a> to assembly compiler for the
+          <a href="https://hackaday.com/2022/10/12/the-2022-supercon-badge-is-a-handheld-trip-through-computing-history/">SUPERCON</a>
+          that <br> I wrote for the  2023 <a href="https://hackaday.com/"> hackaday </a> in Berlin.
+          <br><br>
+        </td>
+      </tr>
+
+      <tr>
+        <td>
+            <input type="text" onkeypress="inputEnter(event)" id="brian_fuck_input" value="+++>+<[->+<]." style=" font-size:24px; width: 500px; height: 50px">  </input>
+        </td>
+
+      </tr>
+
+      <tr>
+
+        <td><div id="editor"></div></td>
+      </tr>
+
+        <tr>
+          <td>..</td>
+        </tr>
+
+
+    </table>
+
+
+
 
 </div>
+
+  <script src="js/script.js"></script>
+
+<style>
+  #editor {
+  position: absolute;
+  width: 600px;
+  height: 400px;
+}
+  </style>
 
 
 

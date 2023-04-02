@@ -1,4 +1,7 @@
 
+var editor = ace.edit("editor");
+editor.session.setMode("ace/mode/yaml");
+
 
 class SuperCon6BrainFuckCompiler
 {
@@ -251,7 +254,6 @@ class SuperCon6BrainFuckCompiler
     for (const [key, value] of Object.entries(this.special_functions)) {
       asm_txt += key + ":\n"
       for (let i = 0; i < value.length; i++){
-          asm_txt += "; pc: " + insn_ptr.toString()+"\n";
           asm_txt += "\t" + value[i] + "\n";
           insn_ptr++;
       }
@@ -264,9 +266,17 @@ class SuperCon6BrainFuckCompiler
 
 
 function compileIt(){
-  var parser = new SuperCon6BrainFuckCompiler();
+ var parser = new SuperCon6BrainFuckCompiler();
   let text = document.getElementById('brian_fuck_input').value
   let asm_txt = parser.compile(text);
 
-  document.getElementById('asm_output').value = asm_txt;
+  editor.setValue(asm_txt);
+  editor.getSession().selection.clearSelection();
 }
+
+function inputEnter(event){
+  if (event.key == "Enter") {
+        compileIt();
+    }
+}
+compileIt();
