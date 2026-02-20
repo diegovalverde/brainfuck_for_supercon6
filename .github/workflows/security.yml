@@ -1,0 +1,60 @@
+name: Security Checks
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  repo-security:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Block common secret file names
+        run: |
+          set -euo pipefail
+          forbidden_paths=$(git ls-files | grep -E '(^|/)(\.env(\..*)?|id_rsa(\.pub)?|.*\.(pem|key)|credentials\.json|secrets\.json)$' || true)
+          if [ -n "$forbidden_paths" ]; then
+            echo "Forbidden secret-like files tracked:"
+            echo "$forbidden_paths"
+            exit 1
+          fi
+
+      - name: Scan for high-signal credential patterns
+        run: |
+          set -euo pipefail
+          matches=$(git grep -I -n -E 'BEGIN (RSA|EC|OPENSSH|PRIVATE) KEY|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36}|xox[baprs]-' -- . ':(exclude)js/lib/pyodide/**' || true)
+          if [ -n "$matches" ]; then
+            echo "Potential credential material detected:"
+            echo "$matches"
+            exit 1
+          fi
+
+      - name: Enforce SRI on external script tags
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import re
+          import sys
+
+          html = open("index.html", "r", encoding="utf-8").read()
+          script_tags = re.findall(r"<script\\b[^>]*src=[\"'][^\"']+[\"'][^>]*>", html, flags=re.IGNORECASE)
+          bad = []
+          for tag in script_tags:
+            if "https://" in tag.lower():
+              if "integrity=" not in tag.lower() or "crossorigin=" not in tag.lower():
+                bad.append(tag)
+          if bad:
+            print("External scripts missing integrity/crossorigin:")
+            for t in bad:
+              print(t)
+            sys.exit(1)
+          PY
+

@@ -1,0 +1,12 @@
+# Local environment files
+.env
+.env.*
+
+# Common secret and key material
+*.pem
+*.key
+id_rsa
+id_rsa.pub
+credentials.json
+secrets.json
+
